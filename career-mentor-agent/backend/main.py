@@ -2,6 +2,15 @@
 AI Career Mentor Chatbot — FastAPI Backend
 Uses Cognee v1.2 for persistent memory + Mistral for reasoning.
 """
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://lost-cognee-frontend.onrender.com"],   # Later change * to your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 import os
 import sys
