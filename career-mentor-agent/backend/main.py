@@ -8,6 +8,12 @@ import sys
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+import os
+from sqlalchemy import create_engine
+
+DATABASE_URL = os.getenv("DATABASE_URL")  # Set in Render environment variables
+engine = create_engine(DATABASE_URL)
+
 
 # ── Disable Cognee auth BEFORE importing cognee ───────────────────────────────
 os.environ.setdefault("ENABLE_BACKEND_ACCESS_CONTROL", "false")
