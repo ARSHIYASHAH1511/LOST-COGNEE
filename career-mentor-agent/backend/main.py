@@ -1,9 +1,10 @@
 """
 AI Career Mentor Chatbot — FastAPI Backend
-Uses Cognee v1.2 for persistent memory + OpenAI GPT-4o-mini for reasoning.
+Uses Cognee v1.2 for persistent memory + Mistral for reasoning.
 """
 
 import os
+import sys
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -12,59 +13,67 @@ from contextlib import asynccontextmanager
 os.environ.setdefault("ENABLE_BACKEND_ACCESS_CONTROL", "false")
 os.environ.setdefault("CACHING", "false")
 
-import cognee
 import openai
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+from memory_store import configure_cognee, recall_memories, store_memory
+
 # ─────────────────────────────────────────────
 # Load environment variables
 # ─────────────────────────────────────────────
 load_dotenv()
 
-OPENAI_API_KEY  = os.getenv("GEMINI_API_KEY", "")   # stored as GEMINI_API_KEY in .env
-LLM_API_KEY     = os.getenv("LLM_API_KEY", OPENAI_API_KEY)
-LLM_PROVIDER    = os.getenv("LLM_PROVIDER", "openai")
-LLM_MODEL       = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
-EMBEDDING_MODEL  = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+# NOTE: variable is still named GEMINI_API_KEY for historical reasons — it
+# actually holds the Mistral key now. LLM_API_KEY falls back to it if unset.
+API_KEY          = os.getenv("GEMINI_API_KEY", "")
+LLM_API_KEY      = os.getenv("LLM_API_KEY", API_KEY)
+
+LLM_PROVIDER     = os.getenv("LLM_PROVIDER", "mistral")
+# LLM_MODEL may come in as "mistral/mistral-large-latest" (LiteLLM-style) or
+# just "mistral-large-latest". Strip any "provider/" prefix since Mistral's
+# OpenAI-compatible endpoint wants the bare model name.
+_raw_llm_model   = os.getenv("LLM_MODEL", "mistral-large-latest")
+LLM_MODEL        = _raw_llm_model.split("/", 1)[-1]
+
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "mistral")
+_raw_embed_model    = os.getenv("EMBEDDING_MODEL", "mistral-embed")
+EMBEDDING_MODEL     = _raw_embed_model.split("/", 1)[-1]
+
+# Base URL for the OpenAI-compatible client. Mistral's endpoint by default;
+# override via EMBEDDING_ENDPOINT/LLM_ENDPOINT in .env if needed.
+LLM_BASE_URL = os.getenv("LLM_ENDPOINT") or "https://api.mistral.ai/v1"
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
 
-if not OPENAI_API_KEY:
-    log.warning("GEMINI_API_KEY (OpenAI key) not set — LLM calls will fail.")
+if not API_KEY:
+    log.warning("GEMINI_API_KEY (Mistral key) not set — LLM calls will fail.")
 
 # ─────────────────────────────────────────────
-# OpenAI client
+# LLM client (OpenAI SDK, pointed at Mistral's compatible endpoint)
 # ─────────────────────────────────────────────
-openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+openai_client = openai.OpenAI(api_key=API_KEY, base_url=LLM_BASE_URL)
 
 # ─────────────────────────────────────────────
 # Configure Cognee at startup
 # ─────────────────────────────────────────────
-async def configure_cognee():
-    """Point Cognee's internal LLM + embeddings at OpenAI."""
-    try:
-        await cognee.config.set_llm_config({
-            "llm_provider": "openai",
-            "llm_model": "gpt-4o-mini",
-            "llm_api_key": LLM_API_KEY,
-        })
-        log.info("Cognee LLM → openai/gpt-4o-mini")
-    except Exception as exc:
-        log.warning("Cognee LLM config skipped: %s", exc)
-
-    try:
-        await cognee.config.set_embedding_config({
-            "embedding_provider": "openai",
-            "embedding_model": EMBEDDING_MODEL,
-            "embedding_api_key": LLM_API_KEY,
-        })
-        log.info("Cognee Embeddings → openai/%s", EMBEDDING_MODEL)
-    except Exception as exc:
-        log.warning("Cognee Embedding config skipped: %s", exc)
+async def configure_runtime_memory():
+    """Initialise Cognee if possible, otherwise keep local persistence active."""
+    await configure_cognee(
+        llm_provider=LLM_PROVIDER,
+        llm_model=LLM_MODEL,
+        llm_api_key=LLM_API_KEY,
+        embedding_provider=EMBEDDING_PROVIDER,
+        embedding_model=EMBEDDING_MODEL,
+        embedding_api_key=LLM_API_KEY,
+    )
 
 
 # ─────────────────────────────────────────────
@@ -72,8 +81,9 @@ async def configure_cognee():
 # ─────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await configure_cognee()
+    await configure_runtime_memory()
     log.info("🚀 Career Mentor backend ready on http://localhost:8000")
+    log.info("Chat memory persistence enabled; turns will be saved to %s", os.getenv("CHAT_MEMORY_FILE", "backend/data/chat_memory.json"))
     yield
     log.info("Career Mentor backend shutting down.")
 
@@ -83,7 +93,7 @@ async def lifespan(app: FastAPI):
 # ─────────────────────────────────────────────
 app = FastAPI(
     title="AI Career Mentor Chatbot",
-    description="Persistent-memory career advisor powered by Cognee + OpenAI",
+    description="Persistent-memory career advisor powered by Cognee + Mistral",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -109,41 +119,6 @@ class ChatResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────
-# Memory helpers  (FIXED: use `datasets=[user_id]` / `dataset_name=user_id`,
-# NOT `user_id=user_id` — cognee.recall()/remember() don't accept that kwarg)
-# ─────────────────────────────────────────────
-async def recall_memories(user_id: str, query: str) -> str:
-    """Retrieve relevant memories for this user from Cognee."""
-    try:
-        results = await cognee.recall(query, datasets=[user_id])
-
-        if not results:
-            return ""
-
-        memory_lines = []
-        for item in results[:8]:
-            text = getattr(item, "text", None) or getattr(item, "content", None) or str(item)
-            if text.strip():
-                memory_lines.append(text.strip())
-
-        return "\n".join(memory_lines) if memory_lines else ""
-
-    except Exception as exc:
-        log.warning("Memory recall failed for user %s: %s", user_id, exc)
-        return ""
-
-
-async def store_memory(user_id: str, user_msg: str, bot_reply: str):
-    """Persist this conversation turn into Cognee."""
-    text_to_store = f"User said: {user_msg}\nCareer Mentor replied: {bot_reply}"
-    try:
-        await cognee.remember(text_to_store, dataset_name=user_id)
-        log.info("Memory stored for user %s", user_id)
-    except Exception as exc:
-        log.error("Memory store failed for user %s: %s", user_id, exc)
-
-
-# ─────────────────────────────────────────────
 # System Prompt
 # ─────────────────────────────────────────────
 SYSTEM_PROMPT = """You are "Career Mentor AI", a warm, encouraging, and knowledgeable career advisor \
@@ -163,7 +138,7 @@ and connect it to anything you know from memory about this person.
 # LLM call
 # ─────────────────────────────────────────────
 def call_llm(memory_context: str, user_message: str) -> str:
-    """Build prompt and call OpenAI gpt-4o-mini."""
+    """Build prompt and call the configured LLM (Mistral by default)."""
     memory_block = (
         f"\n\n--- Relevant memory from previous sessions ---\n{memory_context}\n--- End of memory ---\n"
         if memory_context
@@ -177,7 +152,7 @@ def call_llm(memory_context: str, user_message: str) -> str:
     )
 
     response = openai_client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=LLM_MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": user_content},
@@ -212,7 +187,7 @@ async def chat(req: ChatRequest):
     try:
         reply = call_llm(memory_context, req.message)
     except Exception as exc:
-        log.error("OpenAI call failed: %s", exc)
+        log.error("LLM call failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"LLM error: {exc}")
 
     # 3 — Store memory (non-blocking)
