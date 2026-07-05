@@ -10,9 +10,10 @@ import logging
 from contextlib import asynccontextmanager
 import os
 from sqlalchemy import create_engine
+from database import engine, SessionLocal, Base
 
-DATABASE_URL = os.getenv("DATABASE_URL")  # Set in Render environment variables
-engine = create_engine(DATABASE_URL)
+# Create tables
+Base.metadata.create_all(bind=engine)
 
 
 # ── Disable Cognee auth BEFORE importing cognee ───────────────────────────────
