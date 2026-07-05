@@ -1,85 +1,57 @@
-"""
-AI Career Mentor Chatbot — FastAPI Backend
-Uses Cognee v1.2 for persistent memory + Mistral for reasoning.
-"""
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://lost-cognee-frontend.onrender.com"],   # Later change * to your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 import os
 import sys
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-import os
-from sqlalchemy import create_engine
-from database import engine, SessionLocal, Base
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
-
-# ── Disable Cognee auth BEFORE importing cognee ───────────────────────────────
-os.environ.setdefault("ENABLE_BACKEND_ACCESS_CONTROL", "false")
-os.environ.setdefault("CACHING", "false")
-
-import openai
 from dotenv import load_dotenv
+import openai
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# ── 1. Disable Cognee auth & caching BEFORE importing cognee ──────────────────
+os.environ.setdefault("ENABLE_BACKEND_ACCESS_CONTROL", "false")
+os.environ.setdefault("CACHING", "false")
+
+# ── 2. Add backend dir to path for imports ────────────────────────────────────
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
+# ── 3. Import local modules (Database & Memory) ───────────────────────────────
+from database import engine, SessionLocal, Base
 from memory_store import configure_cognee, recall_memories, store_memory
 
-# ─────────────────────────────────────────────
-# Load environment variables
-# ─────────────────────────────────────────────
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+# ── 4. Load environment variables ─────────────────────────────────────────────
 load_dotenv()
 
-# NOTE: variable is still named GEMINI_API_KEY for historical reasons — it
-# actually holds the Mistral key now. LLM_API_KEY falls back to it if unset.
-API_KEY          = os.getenv("GEMINI_API_KEY", "")
-LLM_API_KEY      = os.getenv("LLM_API_KEY", API_KEY)
+API_KEY = os.getenv("GEMINI_API_KEY", "")
+LLM_API_KEY = os.getenv("LLM_API_KEY", API_KEY)
 
-LLM_PROVIDER     = os.getenv("LLM_PROVIDER", "mistral")
-# LLM_MODEL may come in as "mistral/mistral-large-latest" (LiteLLM-style) or
-# just "mistral-large-latest". Strip any "provider/" prefix since Mistral's
-# OpenAI-compatible endpoint wants the bare model name.
-_raw_llm_model   = os.getenv("LLM_MODEL", "mistral-large-latest")
-LLM_MODEL        = _raw_llm_model.split("/", 1)[-1]
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mistral")
+_raw_llm_model = os.getenv("LLM_MODEL", "mistral-large-latest")
+LLM_MODEL = _raw_llm_model.split("/", 1)[-1]
 
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "mistral")
-_raw_embed_model    = os.getenv("EMBEDDING_MODEL", "mistral-embed")
-EMBEDDING_MODEL     = _raw_embed_model.split("/", 1)[-1]
+_raw_embed_model = os.getenv("EMBEDDING_MODEL", "mistral-embed")
+EMBEDDING_MODEL = _raw_embed_model.split("/", 1)[-1]
 
-# Base URL for the OpenAI-compatible client. Mistral's endpoint by default;
-# override via EMBEDDING_ENDPOINT/LLM_ENDPOINT in .env if needed.
 LLM_BASE_URL = os.getenv("LLM_ENDPOINT") or "https://api.mistral.ai/v1"
 
+# ── 5. Setup Logging & LLM Client ─────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
 
 if not API_KEY:
     log.warning("GEMINI_API_KEY (Mistral key) not set — LLM calls will fail.")
 
-# ─────────────────────────────────────────────
-# LLM client (OpenAI SDK, pointed at Mistral's compatible endpoint)
-# ─────────────────────────────────────────────
 openai_client = openai.OpenAI(api_key=API_KEY, base_url=LLM_BASE_URL)
 
-# ─────────────────────────────────────────────
-# Configure Cognee at startup
-# ─────────────────────────────────────────────
+# ── 6. Configure Cognee at startup ────────────────────────────────────────────
 async def configure_runtime_memory():
     """Initialise Cognee if possible, otherwise keep local persistence active."""
     await configure_cognee(
@@ -91,22 +63,16 @@ async def configure_runtime_memory():
         embedding_api_key=LLM_API_KEY,
     )
 
-
-# ─────────────────────────────────────────────
-# App lifespan
-# ─────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await configure_runtime_memory()
     log.info("🚀 Career Mentor backend ready on http://localhost:8000")
-    log.info("Chat memory persistence enabled; turns will be saved to %s", os.getenv("CHAT_MEMORY_FILE", "backend/data/chat_memory.json"))
+    log.info("Chat memory persistence enabled.")
     yield
     log.info("Career Mentor backend shutting down.")
 
 
-# ─────────────────────────────────────────────
-# FastAPI app
-# ─────────────────────────────────────────────
+# ── 7. Initialize FastAPI App (Crucial Step: Must be BEFORE middleware) ───────
 app = FastAPI(
     title="AI Career Mentor Chatbot",
     description="Persistent-memory career advisor powered by Cognee + Mistral",
@@ -114,18 +80,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add CORS Middleware (so your frontend can talk to it)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allows all origins for now
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ─────────────────────────────────────────────
-# Schemas
-# ─────────────────────────────────────────────
+# ── 8. Schemas ────────────────────────────────────────────────────────────────
 class ChatRequest(BaseModel):
     user_id: str
     message: str
@@ -134,9 +99,7 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# ─────────────────────────────────────────────
-# System Prompt
-# ─────────────────────────────────────────────
+# ── 9. System Prompt ──────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are "Career Mentor AI", a warm, encouraging, and knowledgeable career advisor \
 specifically for students and early-career professionals. Your goals are:
 1. Help users discover suitable career paths based on their interests, skills, and goals.
@@ -150,11 +113,9 @@ and connect it to anything you know from memory about this person.
 """
 
 
-# ─────────────────────────────────────────────
-# LLM call
-# ─────────────────────────────────────────────
+# ── 10. LLM Call Logic ────────────────────────────────────────────────────────
 def call_llm(memory_context: str, user_message: str) -> str:
-    """Build prompt and call the configured LLM (Mistral by default)."""
+    """Build prompt and call the configured LLM."""
     memory_block = (
         f"\n\n--- Relevant memory from previous sessions ---\n{memory_context}\n--- End of memory ---\n"
         if memory_context
@@ -178,14 +139,15 @@ def call_llm(memory_context: str, user_message: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-# ─────────────────────────────────────────────
-# Endpoints
-# ─────────────────────────────────────────────
+# ── 11. Endpoints ─────────────────────────────────────────────────────────────
+
+@app.get("/")
+async def root():
+    return {"message": "Career Mentor AI backend is running successfully!"}
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
-
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
