@@ -1,16 +1,16 @@
-#a career agent
+# CAREER MENTOR AI🧭
 
-An AI-powered career mentor chatbot with **persistent long-term memory**.  
-It remembers everything you tell it — even after you close the tab — so you can build on career conversations across sessions.
+** career mentor ai🧭** is an AI-powered career mentor chatbot with **persistent long-term memory**.  
+It helps students and early-career professionals discover career paths, identify skill gaps, and get practical learning & interview guidance — and it **remembers every conversation** across sessions.
 
 ---
 
 ## ✨ Features
 
-- **🧠 Persistent Memory** — Powered by [Cognee](https://github.com/topoteretes/cognee). Every chat is stored and recalled across sessions.
-- **💬 Career Mentor Chat** — Ask about career paths, skill gaps, learning plans, and interview prep.
-- **🔍 Context-Aware Answers** — The AI pulls relevant past conversations to give personalized advice.
-- **🛡️ Works Offline** — Falls back to local JSON file storage when Cognee is unavailable.
+- **🧠 Persistent Memory** — Uses [Cognee](https://github.com/topoteretes/cognee) to remember chats even after you close the browser.
+- **💬 Career Mentor Chat** — Ask about career paths, skill gaps, learning roadmaps, and interview prep.
+- **🔍 Context-Aware Answers** — Pulls relevant past conversations for personalized advice.
+- **🛡️ Automatic Fallback** — Saves memory to a local JSON file when Cognee is unavailable.
 - **⚡ Fast & Lightweight** — Single-page chat UI + FastAPI backend.
 
 ---
@@ -22,8 +22,8 @@ It remembers everything you tell it — even after you close the tab — so you 
 | **Frontend** | HTML + CSS + Vanilla JS (single-page chat UI) |
 | **Backend** | FastAPI (Python) |
 | **LLM** | Mistral (via OpenAI-compatible SDK) |
-| **Memory** | Cognee (vector knowledge graph) + JSON file fallback |
-| **Deployment** | Uvicorn + Docker-ready |
+| **Memory Layer** | Cognee (vector knowledge graph) + JSON file fallback |
+| **Server** | Uvicorn |
 
 ---
 
