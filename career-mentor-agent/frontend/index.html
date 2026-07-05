@@ -927,5 +927,19 @@
     /* Initial focus */
     msgInput.focus();
   </script>
+  <script>
+  // Connect to Backend
+  const BACKEND_URL = "https://lost-cognee.onrender.com"; // ← Replace with your actual backend URL
+
+  fetch(BACKEND_URL + "/")
+    .then(res => res.json())
+    .then(data => {
+      console.log("✅ Connected to Backend!", data);
+    })
+    .catch(err => {
+      console.error("❌ Backend connection failed:", err);
+    });
+</script>
+
 </body>
 </html>
