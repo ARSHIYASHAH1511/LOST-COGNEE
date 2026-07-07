@@ -15,13 +15,15 @@ from fastapi.middleware.cors import CORSMiddleware  # <--- 1. Add this import
 app = FastAPI()
 
 # <--- 2. Add this block right here
+# Quickest fix for hackathon: Allow Everything
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins (Vite, Localhost, Netlify, etc.)
+    allow_origins=["*"], 
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def root():
