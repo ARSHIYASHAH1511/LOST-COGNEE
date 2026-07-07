@@ -31,7 +31,8 @@ Base.metadata.create_all(bind=engine)
 # ── 4. Load environment variables ─────────────────────────────────────────────
 load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY", "")
+# ⚡ FIXED: Read MISTRAL_API_KEY, not GEMINI_API_KEY
+API_KEY = os.getenv("MISTRAL_API_KEY", "")
 LLM_API_KEY = os.getenv("LLM_API_KEY", API_KEY)
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mistral")
@@ -49,7 +50,11 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
 
 if not API_KEY:
-    log.warning("GEMINI_API_KEY (Mistral key) not set — LLM calls will fail.")
+    log.warning("MISTRAL_API_KEY not set — LLM calls will fail.")
+
+# ⚡ FIXED: Trick Cognee/OpenAI SDK so it stops crashing
+if API_KEY:
+    os.environ["OPENAI_API_KEY"] = API_KEY
 
 openai_client = openai.OpenAI(api_key=API_KEY, base_url=LLM_BASE_URL)
 
