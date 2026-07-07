@@ -1,31 +1,16 @@
-# CAREER MENTOR AI🧭
+# React + Vite
 
-** career mentor ai🧭** is an AI-powered career mentor chatbot with **persistent long-term memory**.  
-It helps students and early-career professionals discover career paths, identify skill gaps, and get practical learning & interview guidance — and it **remembers every conversation** across sessions.
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
----
+Currently, two official plugins are available:
 
-## ✨ Features
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-- **🧠 Persistent Memory** — Uses [Cognee](https://github.com/topoteretes/cognee) to remember chats even after you close the browser.
-- **💬 Career Mentor Chat** — Ask about career paths, skill gaps, learning roadmaps, and interview prep.
-- **🔍 Context-Aware Answers** — Pulls relevant past conversations for personalized advice.
-- **🛡️ Automatic Fallback** — Saves memory to a local JSON file when Cognee is unavailable.
-- **⚡ Fast & Lightweight** — Single-page chat UI + FastAPI backend.
+## React Compiler
 
----
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## 🏗️ Tech Stack
+## Expanding the Oxlint configuration
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | HTML + CSS + Vanilla JS (single-page chat UI) |
-| **Backend** | FastAPI (Python) |
-| **LLM** | Mistral (via OpenAI-compatible SDK) |
-| **Memory Layer** | Cognee (vector knowledge graph) + JSON file fallback |
-| **Server** | Uvicorn |
-
----
-
-## 📁 Project Structure
-
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.

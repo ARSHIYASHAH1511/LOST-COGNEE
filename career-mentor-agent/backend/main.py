@@ -8,8 +8,32 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import openai
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware  # <--- 1. Add this import
+
+app = FastAPI()
+
+# <--- 2. Add this block right here
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins (Vite, Localhost, Netlify, etc.)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+
+@app.get("/")
+async def root():
+    return {"message": "Backend is running!"}
+
+# Your existing @app.post("/api/chat") code follows...
+@app.post("/api/chat")  # Ensure this matches BASE_URL + "/api/chat"
+async def chat_endpoint(data: dict):
+    # Your logic here
+    return {"response": "Hello from FastAPI!"}
+
+
 from pydantic import BaseModel
 
 # ── 1. Disable Cognee auth & caching BEFORE importing cognee ──────────────────
@@ -180,3 +204,4 @@ async def chat(req: ChatRequest):
 
     # 4 — Return
     return ChatResponse(reply=reply)
+s
