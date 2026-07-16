@@ -2,7 +2,7 @@ const BASE_URL = 'https://lost-cognee-backend-final.onrender.com/chat'
 
 export async function sendChatMessage({ message, userId, sessionId }) {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000) // 30 sec timeout
+  const timeout = setTimeout(() => controller.abort(), 90000) // 30 sec timeout
 
   try {
     const res = await fetch(BASE_URL, { // ✅ No extra /api/chat
