@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://lost-cognee.vercel.app"],
+    allow_origins=["https://lost-cognee-rfl5-of4pttdhg-arshiyashah1511s-projects.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
