@@ -5,7 +5,7 @@ export async function sendChatMessage({ message, userId, sessionId }) {
   const timeout = setTimeout(() => controller.abort(), 30000) // 30 sec timeout
 
   try {
-    const res = await fetch(`${BASE_URL}/api/chat`, {
+    const res = await fetch(BASE_URL, { // ✅ No extra /api/chat
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
