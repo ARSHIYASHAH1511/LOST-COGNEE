@@ -16,9 +16,11 @@ app = FastAPI()
 
 # <--- 2. Add this block right here
 # Quickest fix for hackathon: Allow Everything
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["https://lost-cognee.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
