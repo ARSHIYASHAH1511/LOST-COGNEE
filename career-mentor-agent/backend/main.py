@@ -6,25 +6,21 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 load_dotenv()
-
 import openai
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware  # <--- 1. Add this import
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# <--- 2. Add this block right here
-# Quickest fix for hackathon: Allow Everything
-from fastapi.middleware.cors import CORSMiddleware
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://lost-cognee-rfl5-of4pttdhg-arshiyashah1511s-projects.vercel.app/"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 @app.get("/")
