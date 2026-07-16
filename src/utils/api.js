@@ -1,4 +1,4 @@
-const BASE_URL = 'https://career-mentor-backend.onrender.com'
+const BASE_URL = 'https://lost-cognee-backend-final.onrender.com/chat'
 
 export async function sendChatMessage({ message, userId, sessionId }) {
   const controller = new AbortController()
